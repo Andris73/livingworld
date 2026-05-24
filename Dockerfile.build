@@ -35,6 +35,12 @@ COPY . .
 
 RUN chmod +x gradlew reignofnether/gradlew
 
+# The RoN fork doesn't ship a settings.gradle. When it sits as a submodule
+# inside this repo, gradle walks up and finds livingworld's settings.gradle
+# and refuses to build. Drop in a minimal one if it isn't already there.
+RUN [ -f reignofnether/settings.gradle ] || \
+    echo "rootProject.name = 'reignofnether'" > reignofnether/settings.gradle
+
 # Build the RoN dependency first — the livingworld build references its
 # compiled jar from build/libs.
 WORKDIR /workspace/reignofnether

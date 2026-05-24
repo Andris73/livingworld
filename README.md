@@ -33,29 +33,58 @@ Builds are produced automatically by [GitHub Actions](.github/workflows/build.ym
 
 ## Build instructions
 
-This is a **sibling mod** to Reign of Nether, designed to work alongside it without modifying RoN's source. You must build Reign of Nether first to produce a jar that this mod can compile against.
+Living World is a companion mod for Reign of Nether — it doesn't modify RoN's source, but it does need a compiled RoN jar to link against. The RoN fork is vendored as a git submodule at `reignofnether/`.
 
-1. **Build Reign of Nether**:
+1. **Clone with submodules**:
    ```bash
-   cd ../reignofnether
-   ./gradlew build
-   ```
-   This produces `reignofnether-1.3.3c.jar` in `../reignofnether/build/libs/`.
-
-2. **Build this mod**:
-   ```bash
+   git clone --recurse-submodules https://github.com/Andris73/livingworld.git
    cd livingworld
+   ```
+   If you already cloned without `--recurse-submodules`:
+   ```bash
+   git submodule update --init --recursive
+   ```
+
+2. **Build Reign of Nether**:
+   ```bash
+   # The upstream RoN repo doesn't ship a settings.gradle; create a one-liner
+   # so gradle treats the submodule as its own build root instead of trying
+   # to attach to livingworld's.
+   [ -f reignofnether/settings.gradle ] || \
+       echo "rootProject.name = 'reignofnether'" > reignofnether/settings.gradle
+
+   cd reignofnether
+   ./gradlew build
+   cd ..
+   ```
+   This produces `reignofnether-1.3.3d.jar` in `reignofnether/build/libs/`.
+
+3. **Build this mod**:
+   ```bash
    ./gradlew build
    ```
 
-3. **Run in development**:
+4. **Run in development**:
    ```bash
    ./gradlew runServer
    # or
    ./gradlew runClient
    ```
 
+Alternatively, use the reproducible Docker build:
+```bash
+docker build -f Dockerfile.build -t mc-mod-builder . --no-cache
+```
+
 Both mods' jars go in your server's `mods/` folder for production use.
+
+### Pointing the build at a different RoN checkout
+
+The `ron_path` / `ron_version` properties in `build.gradle` default to the bundled submodule. Override them on the gradle command line if you want to consume a sibling checkout instead:
+
+```bash
+./gradlew build -Pron_path=/path/to/reignofnether -Pron_version=1.3.3d
+```
 
 ## Usage (slice 1)
 
@@ -141,7 +170,7 @@ Tweak behavior by editing the constants in:
 
 - **Minecraft**: 1.20.1
 - **Forge**: 47.4.0+
-- **Reign of Nether**: 1.3.3c+
+- **Reign of Nether**: 1.3.3d+
 
 ## License
 

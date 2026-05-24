@@ -18,7 +18,7 @@ on:
       - "**"
 
 permissions:
-  contents: write  # tag + release creation
+  contents: write # tag + release creation
 
 jobs:
   build:
@@ -50,6 +50,18 @@ jobs:
 
       - name: Make gradle wrappers executable
         run: chmod +x gradlew reignofnether/gradlew
+
+      # The Reign of Nether fork does not ship its own settings.gradle.
+      # When built standalone it doesn't need one, but as a submodule of
+      # this repo gradle walks up the directory tree, finds livingworld's
+      # settings.gradle and refuses to build a project that isn't declared
+      # in it. Drop in a minimal settings.gradle so gradle treats the
+      # submodule as its own build root.
+      - name: Prepare Reign of Nether settings.gradle
+        run: |
+          if [ ! -f reignofnether/settings.gradle ]; then
+            echo "rootProject.name = 'reignofnether'" > reignofnether/settings.gradle
+          fi
 
       - name: Build Reign of Nether (dependency)
         working-directory: reignofnether
