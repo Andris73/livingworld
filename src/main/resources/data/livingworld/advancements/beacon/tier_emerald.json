@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/tier_gold",
+  "display": {
+    "icon": { "item": "minecraft:emerald_block" },
+    "title": { "text": "Emerald Era" },
+    "description": { "text": "Upgrade your Beacon to emerald tier." },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

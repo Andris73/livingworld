@@ -1,0 +1,38 @@
+modLoader = "javafml"
+loaderVersion = "[47,)"
+license = "GNU GPLv3"
+
+[[mods]]
+modId = "livingworld"
+version = "${file.jarVersion}"
+displayName = "Living World"
+authors = "you"
+description = '''
+A companion mod for Reign of Nether.
+
+Replaces vanilla villages with autonomous NPC factions (villagers, monsters or
+piglins) that own buildings, gather resources, train units, and build out their
+settlements without any player input — turning the overworld into a living
+RTS sandbox.
+'''
+
+[[dependencies.livingworld]]
+    modId = "forge"
+    mandatory = true
+    versionRange = "[47,)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.livingworld]]
+    modId = "minecraft"
+    mandatory = true
+    versionRange = "[1.20.1,1.21)"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.livingworld]]
+    modId = "reignofnether"
+    mandatory = true
+    versionRange = "[1.3.3,)"
+    ordering = "AFTER"
+    side = "BOTH"

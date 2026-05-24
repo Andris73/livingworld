@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/tier_netherite",
+  "display": {
+    "icon": { "item": "minecraft:clock" },
+    "title": { "text": "Quarter Held" },
+    "description": { "text": "Hold the netherite Beacon for a quarter of the win timer." },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

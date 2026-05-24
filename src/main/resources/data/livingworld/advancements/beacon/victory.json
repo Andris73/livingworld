@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/hold_final",
+  "display": {
+    "icon": { "item": "minecraft:nether_star" },
+    "title": { "text": "Beacon of Origins" },
+    "description": { "text": "Hold the netherite Beacon until the timer runs out." },
+    "frame": "challenge",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

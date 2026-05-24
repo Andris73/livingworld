@@ -1,0 +1,149 @@
+# Build and release Living World on every push.
+#
+# - Every push to any branch runs the full gradle build of Reign of Nether
+#   (submodule) followed by Living World itself, and uploads the resulting
+#   livingworld jar as a workflow artifact.
+# - When build.gradle's version doesn't yet have a corresponding git tag,
+#   the workflow tags HEAD with v<version> and creates a GitHub release
+#   with the jar attached.
+# - The release is marked as a pre-release while the version's release-major
+#   is 0 (e.g. 0.x.y); once it hits 1.x.y it becomes a normal release.
+#   This matches the project's "0.x = experimental, 1.x = stable" scheme.
+
+name: build
+
+on:
+  push:
+    branches:
+      - "**"
+
+permissions:
+  contents: write  # tag + release creation
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          # full history so the "does this tag already exist" check works
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            reignofnether/.gradle
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make gradle wrappers executable
+        run: chmod +x gradlew reignofnether/gradlew
+
+      - name: Build Reign of Nether (dependency)
+        working-directory: reignofnether
+        run: ./gradlew build --no-daemon
+
+      - name: Generate marker NBTs and apply vanilla overrides
+        run: |
+          set -e
+          python3 scripts/generate_marker_nbt.py
+          MARKER=build/generated-nbt/marker.nbt
+          # Vanilla village town-centre templates we shadow with an empty marker.
+          BASE=src/main/resources/data/minecraft/structures/village
+          for path in \
+              plains/town_centers/plains_fountain_01.nbt \
+              plains/town_centers/plains_meeting_point_1.nbt \
+              plains/town_centers/plains_meeting_point_2.nbt \
+              plains/town_centers/plains_meeting_point_3.nbt \
+              desert/town_centers/desert_meeting_point_1.nbt \
+              desert/town_centers/desert_meeting_point_2.nbt \
+              desert/town_centers/desert_meeting_point_3.nbt \
+              savanna/town_centers/savanna_meeting_point_1.nbt \
+              savanna/town_centers/savanna_meeting_point_2.nbt \
+              savanna/town_centers/savanna_meeting_point_3.nbt \
+              savanna/town_centers/savanna_meeting_point_4.nbt \
+              snowy/town_centers/snowy_meeting_point_1.nbt \
+              snowy/town_centers/snowy_meeting_point_2.nbt \
+              snowy/town_centers/snowy_meeting_point_3.nbt \
+              taiga/town_centers/taiga_meeting_point_1.nbt \
+              taiga/town_centers/taiga_meeting_point_2.nbt; do
+            mkdir -p "$BASE/$(dirname $path)"
+            cp "$MARKER" "$BASE/$path"
+          done
+          # Neutral landmark overrides (ruined portals, pyramids).
+          BASE2=src/main/resources/data/minecraft/structures
+          for path in \
+              ruined_portal/portal_1.nbt \
+              ruined_portal/portal_2.nbt \
+              ruined_portal/portal_3.nbt \
+              ruined_portal/portal_4.nbt \
+              ruined_portal/portal_5.nbt \
+              ruined_portal/portal_6.nbt \
+              ruined_portal/portal_7.nbt \
+              ruined_portal/portal_8.nbt \
+              ruined_portal/portal_9.nbt \
+              ruined_portal/portal_10.nbt \
+              ruined_portal/giant_portal_1.nbt \
+              ruined_portal/giant_portal_2.nbt \
+              ruined_portal/giant_portal_3.nbt \
+              desert_pyramid.nbt \
+              jungle_pyramid.nbt; do
+            mkdir -p "$BASE2/$(dirname $path)"
+            cp "$MARKER" "$BASE2/$path"
+          done
+
+      - name: Build Living World
+        run: ./gradlew build --no-daemon
+
+      - name: Read version from build.gradle
+        id: version
+        run: |
+          VERSION=$(grep "^version" build.gradle | head -1 | cut -d"'" -f2)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          # Pre-release while the release-major is 0; promote to a full
+          # GitHub release once the major bumps to 1.
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          if [ "$MAJOR" = "0" ]; then
+            echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Upload jar as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: livingworld-${{ steps.version.outputs.version }}
+          path: build/libs/livingworld-*.jar
+          retention-days: 30
+
+      - name: Check if release tag already exists
+        id: tag_check
+        run: |
+          if git rev-parse "${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create GitHub release
+        if: steps.tag_check.outputs.exists == 'false' && github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Living World ${{ steps.version.outputs.tag }}
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          generate_release_notes: true
+          files: build/libs/livingworld-*.jar

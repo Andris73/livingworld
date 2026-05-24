@@ -1,0 +1,106 @@
+# Container build for Living World + the bundled Reign of Nether fork.
+#
+# Build context is the livingworld repo root (the directory containing this
+# Dockerfile). The Reign of Nether source lives at ./reignofnether — it's a
+# git submodule of Andris73/reignofnether pinned to the commit Living World
+# was last compiled against.
+#
+# Usage:
+#   docker build -f Dockerfile.build -t mc-mod-builder . --no-cache
+#
+# Output: two jars in /output inside the image —
+#   - livingworld-<version>.jar (this mod)
+#   - reignofnether-<ron-version>.jar (the bundled RoN build the mod targets)
+#
+# Use a follow-up `docker run --rm -v <host-mods>:/output-host mc-mod-builder
+# sh -c 'cp /output/*.jar /output-host/'` to extract them.
+
+FROM eclipse-temurin:17-jdk
+
+# python3 is used to generate the marker NBT that overrides the vanilla
+# village + neutral-structure templates. git/wget/unzip cover any tooling
+# the gradle build wants to fetch.
+RUN apt-get update && apt-get install -y \
+        git \
+        wget \
+        unzip \
+        python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+
+# Copy the livingworld repo + its reignofnether/ submodule contents into the
+# image in one go.
+COPY . .
+
+RUN chmod +x gradlew reignofnether/gradlew
+
+# Build the RoN dependency first — the livingworld build references its
+# compiled jar from build/libs.
+WORKDIR /workspace/reignofnether
+RUN ./gradlew build --no-daemon
+
+# Generate the 1×1 marker NBT and shadow every vanilla town-center template
+# we want the world generator to spawn instead of a real village. Living
+# World's VillageReplacer detects the structure start and decides what to
+# spawn from there.
+WORKDIR /workspace
+RUN python3 scripts/generate_marker_nbt.py && \
+    BASE=src/main/resources/data/minecraft/structures/village && \
+    MARKER=build/generated-nbt/marker.nbt && \
+    for path in \
+        plains/town_centers/plains_fountain_01.nbt \
+        plains/town_centers/plains_meeting_point_1.nbt \
+        plains/town_centers/plains_meeting_point_2.nbt \
+        plains/town_centers/plains_meeting_point_3.nbt \
+        desert/town_centers/desert_meeting_point_1.nbt \
+        desert/town_centers/desert_meeting_point_2.nbt \
+        desert/town_centers/desert_meeting_point_3.nbt \
+        savanna/town_centers/savanna_meeting_point_1.nbt \
+        savanna/town_centers/savanna_meeting_point_2.nbt \
+        savanna/town_centers/savanna_meeting_point_3.nbt \
+        savanna/town_centers/savanna_meeting_point_4.nbt \
+        snowy/town_centers/snowy_meeting_point_1.nbt \
+        snowy/town_centers/snowy_meeting_point_2.nbt \
+        snowy/town_centers/snowy_meeting_point_3.nbt \
+        taiga/town_centers/taiga_meeting_point_1.nbt \
+        taiga/town_centers/taiga_meeting_point_2.nbt ; do \
+      mkdir -p "$BASE/$(dirname $path)" && \
+      cp "$MARKER" "$BASE/$path" ; \
+    done
+
+# Same trick for the neutral landmarks we want to replace with RoN buildings
+# (ruined portals → transport portal, pyramids → healing fountain). Vanilla
+# loads our empty marker instead of the real template, so no vanilla blocks
+# appear but the structure start still registers, which is enough for
+# NeutralStructureReplacer to detect it on chunk-load.
+RUN BASE2=src/main/resources/data/minecraft/structures && \
+    MARKER=build/generated-nbt/marker.nbt && \
+    for path in \
+        ruined_portal/portal_1.nbt \
+        ruined_portal/portal_2.nbt \
+        ruined_portal/portal_3.nbt \
+        ruined_portal/portal_4.nbt \
+        ruined_portal/portal_5.nbt \
+        ruined_portal/portal_6.nbt \
+        ruined_portal/portal_7.nbt \
+        ruined_portal/portal_8.nbt \
+        ruined_portal/portal_9.nbt \
+        ruined_portal/portal_10.nbt \
+        ruined_portal/giant_portal_1.nbt \
+        ruined_portal/giant_portal_2.nbt \
+        ruined_portal/giant_portal_3.nbt \
+        desert_pyramid.nbt \
+        jungle_pyramid.nbt ; do \
+      mkdir -p "$BASE2/$(dirname $path)" && \
+      cp "$MARKER" "$BASE2/$path" ; \
+    done
+
+# Now build the mod itself.
+RUN ./gradlew build --no-daemon
+
+# Stage the artefacts.
+RUN mkdir -p /output && \
+    cp build/libs/*.jar /output/ && \
+    cp reignofnether/build/libs/*.jar /output/ && \
+    ls -la /output/

@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/tier_emerald",
+  "display": {
+    "icon": { "item": "minecraft:diamond_block" },
+    "title": { "text": "Diamond Era" },
+    "description": { "text": "Upgrade your Beacon to diamond tier." },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

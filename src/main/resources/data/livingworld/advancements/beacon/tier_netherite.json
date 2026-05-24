@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/tier_diamond",
+  "display": {
+    "icon": { "item": "minecraft:netherite_block" },
+    "title": { "text": "Netherite Era" },
+    "description": { "text": "Upgrade your Beacon to netherite tier and start the win timer." },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

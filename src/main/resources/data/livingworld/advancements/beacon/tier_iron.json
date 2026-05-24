@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/take_control",
+  "display": {
+    "icon": { "item": "minecraft:iron_block" },
+    "title": { "text": "Iron Era" },
+    "description": { "text": "Upgrade your Beacon to iron tier." },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

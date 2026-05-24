@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/hold_75",
+  "display": {
+    "icon": { "item": "minecraft:clock" },
+    "title": { "text": "Final Minute" },
+    "description": { "text": "Sixty seconds from a Beacon victory. Defend!" },
+    "frame": "goal",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

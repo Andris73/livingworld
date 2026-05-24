@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/root",
+  "display": {
+    "icon": { "item": "minecraft:beacon" },
+    "title": { "text": "Seize the Beacon" },
+    "description": { "text": "Capture the Beacon of Origins." },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}

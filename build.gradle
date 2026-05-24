@@ -1,0 +1,94 @@
+buildscript {
+    repositories {
+        maven { url = 'https://maven.minecraftforge.net' }
+        maven { url = 'https://maven.parchmentmc.org' }
+        mavenCentral()
+    }
+    dependencies {
+        classpath group: 'net.minecraftforge.gradle', name: 'ForgeGradle', version: '5.1.+', changing: true
+        classpath 'org.parchmentmc:librarian:1.+'
+    }
+}
+
+apply plugin: 'net.minecraftforge.gradle'
+apply plugin: 'eclipse'
+apply plugin: 'org.parchmentmc.librarian.forgegradle'
+
+version = '0.2.0'
+group = 'com.livingworld'
+archivesBaseName = 'livingworld'
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+minecraft {
+    mappings channel: 'parchment', version: '2023.09.03-1.20.1'
+
+    runs {
+        client {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                livingworld {
+                    source sourceSets.main
+                }
+            }
+        }
+        server {
+            workingDirectory project.file('run')
+            property 'forge.logging.markers', 'REGISTRIES'
+            property 'forge.logging.console.level', 'debug'
+            mods {
+                livingworld {
+                    source sourceSets.main
+                }
+            }
+        }
+    }
+}
+
+sourceSets.main.resources { srcDir 'src/generated/resources' }
+
+repositories {
+    mavenCentral()
+}
+
+// Path to the RoN project. By default this resolves to the bundled
+// `reignofnether/` git submodule inside this repo. Override with
+// -Pron_path=... (e.g. point at a sibling checkout during local dev).
+if (!project.hasProperty('ron_path')) {
+    ext.ron_path = "${project.rootDir}/reignofnether"
+}
+if (!project.hasProperty('ron_version')) {
+    ext.ron_version = '1.3.3d'
+}
+
+dependencies {
+    minecraft 'net.minecraftforge:forge:1.20.1-47.4.0'
+
+    // Reign of Nether compile/runtime dependency.
+    // Build the bundled submodule first:  cd reignofnether && ./gradlew build
+    // Then this picks up reignofnether-<version>.jar from reignofnether/build/libs/
+    // fg.deobf() remaps the reobf'd SRG names back to Parchment/MCP names for dev use.
+    implementation fg.deobf(files("${ron_path}/build/libs/reignofnether-${ron_version}.jar"))
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+jar {
+    manifest {
+        attributes([
+            'Specification-Title'    : 'livingworld',
+            'Specification-Vendor'   : 'livingworld',
+            'Specification-Version'  : '1',
+            'Implementation-Title'   : project.name,
+            'Implementation-Version' : "${version}",
+            'Implementation-Vendor'  : 'livingworld',
+            'Implementation-Timestamp': new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
+        ])
+    }
+}
+
+jar.finalizedBy('reobfJar')

@@ -1,0 +1,16 @@
+{
+  "parent": "livingworld:beacon/hold_25",
+  "display": {
+    "icon": { "item": "minecraft:clock" },
+    "title": { "text": "Halfway There" },
+    "description": { "text": "Hold the netherite Beacon for half of the win timer." },
+    "frame": "task",
+    "show_toast": true,
+    "announce_to_chat": true,
+    "hidden": false
+  },
+  "criteria": {
+    "trigger": { "trigger": "minecraft:impossible" }
+  },
+  "requirements": [["trigger"]]
+}
