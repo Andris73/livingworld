@@ -1,0 +1,4 @@
+[submodule "reignofnether"]
+	path = reignofnether
+	url = https://github.com/Andris73/reignofnether.git
+	branch = 1.20.1-dev
