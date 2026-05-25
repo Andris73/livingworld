@@ -109,6 +109,17 @@ public class BeaconOfOrigins {
     private static boolean grantedFinal = false;
 
     /**
+     * Latched once we've declared victory for the current owner. Gates
+     * the entire {@link #checkHoldThresholdsAndVictory} body so we don't
+     * keep re-granting (and then revoking) the whole tree every poll
+     * while the winner still holds the beacon at {@code beaconOwnerTicks
+     * >= winTicks}. Cleared in {@link #onCaptured} when the beacon
+     * changes hands (or is forcibly reset to unclaimed, as we do
+     * immediately after victory).
+     */
+    private static boolean victoryDeclared = false;
+
+    /**
      * Snapshot of RTSPlayer names that were registered on the previous
      * poll. Used to detect defeat / surrender (player removed from
      * {@code PlayerServerEvents.rtsPlayers}) and reset that player's beacon
@@ -329,6 +340,10 @@ public class BeaconOfOrigins {
         ServerLevel level,
         String currentOwner
     ) {
+        // Already announced victory for this ownership session — wait for
+        // the next capture (or our own forced reset, see end of this
+        // method) before re-arming the whole progression.
+        if (victoryDeclared) return;
         RTSPlayer rts = null;
         synchronized (PlayerServerEvents.rtsPlayers) {
             for (RTSPlayer p : PlayerServerEvents.rtsPlayers) {
@@ -374,12 +389,32 @@ public class BeaconOfOrigins {
             // toast actually fires.
             BeaconAdvancements.grant(player, BeaconAdvancements.VICTORY);
             BeaconAdvancements.reset(player);
-            // Clear the hold flags so we don't keep firing if RoN's win
-            // handling doesn't immediately reset beaconOwnerTicks.
+
+            // Latch so this whole block is skipped on subsequent polls
+            // until ownership changes again. Previously we cleared the
+            // hold-threshold booleans and trusted RoN to reset
+            // beaconOwnerTicks, but it doesn't — every poll thereafter
+            // saw held >= winTicks/4 .. >= winTicks all over again and
+            // re-granted+re-revoked the entire tree every second,
+            // spamming the chat and server log.
+            victoryDeclared = true;
             granted25 = false;
             granted50 = false;
             granted75 = false;
             grantedFinal = false;
+
+            // Force the beacon back to an unclaimed state so the standard
+            // onCaptured() flow re-runs on the next poll: that handler
+            // zeros every player's beaconOwnerTicks (so the just-crowned
+            // winner can't immediately re-win on stale counters),
+            // re-places the beacon at tier 0, and resets lastKnownTier /
+            // victoryDeclared. We can't call onCaptured() directly from
+            // here because it's the tick handler's job to detect the
+            // owner diff — just clearing the placement's ownerName is
+            // enough to trigger it next tick.
+            if (beaconPlacement != null) {
+                beaconPlacement.ownerName = "";
+            }
         }
     }
 
@@ -402,6 +437,9 @@ public class BeaconOfOrigins {
         granted50 = false;
         granted75 = false;
         grantedFinal = false;
+        // Clear the victory latch so the next owner can also reach + be
+        // announced for their own win.
+        victoryDeclared = false;
         lastKnownTier = 0;
 
         // Grant the "take control" advancement to the new owner.
