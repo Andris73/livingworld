@@ -28,3 +28,7 @@ src/generated/
 
 # misc
 *.log
+
+# Locally-downloaded release jars (not part of the build, just a staging
+# area for deploying to local Prism / remote server).
+/dist/
