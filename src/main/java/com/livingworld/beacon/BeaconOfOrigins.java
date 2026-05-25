@@ -1,6 +1,7 @@
 package com.livingworld.beacon;
 
 import com.livingworld.LivingWorld;
+import com.livingworld.bot.FactionBotRegistry;
 import com.livingworld.util.Terrain;
 import com.solegendary.reignofnether.api.ReignOfNetherRegistries;
 import com.solegendary.reignofnether.building.Building;
@@ -19,7 +20,9 @@ import java.util.Set;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
@@ -535,9 +538,30 @@ public class BeaconOfOrigins {
             }
         }
 
-        // RoN's own beacon capture system already broadcasts
-        // "X has gained control of the Beacon!" via sendWarning("capture_warning")
-        // — no need for a second chat message here. Just log to the server log.
+        // RoN's BeaconPlacement.sendWarning is suppressed (see the
+        // `if (true) return;` in the fork) because we replace those
+        // chat lines with vanilla advancement toasts — the
+        // BeaconAdvancements.grant(TAKE_CONTROL) above produces the
+        // standard "[player] has made the advancement [Take Control]"
+        // chat line for human captors. Bots aren't real ServerPlayers
+        // though, so they can't receive vanilla advancements at all,
+        // which left bot captures completely silent. Broadcast a
+        // matching tellraw-style line for them so the chat room always
+        // learns who took the beacon, regardless of captor type.
+        if (!newOwner.isEmpty() && isBotOwner(newOwner)) {
+            MinecraftServer server = level.getServer();
+            if (server != null) {
+                server
+                    .getPlayerList()
+                    .broadcastSystemMessage(
+                        Component.literal(
+                            newOwner + " has captured the beacon"
+                        ),
+                        false
+                    );
+            }
+        }
+
         String msg = newOwner.isEmpty()
             ? "The Beacon of Origins is now unclaimed."
             : newOwner +
@@ -545,6 +569,19 @@ public class BeaconOfOrigins {
               level.getGameTime() +
               ")";
         LivingWorld.LOGGER.info("[BeaconOfOrigins] {}", msg);
+    }
+
+    /**
+     * True if {@code name} matches a currently-registered NPC bot (i.e. a
+     * village in {@link FactionBotRegistry}). Used by {@link #onCaptured}
+     * to decide whether to emit a manual chat broadcast: human captors
+     * already get a vanilla advancement chat line for the same event.
+     */
+    private static boolean isBotOwner(String name) {
+        for (var bot : FactionBotRegistry.all()) {
+            if (bot.name().equals(name)) return true;
+        }
+        return false;
     }
 
     // ------------------------------------------------------------ lookup
